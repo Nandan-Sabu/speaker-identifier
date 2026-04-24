@@ -9,17 +9,9 @@ from identifier import get_embedding, identify
 
 app = FastAPI()
 
-def read_audio(contents: bytes) -> np.ndarray:
-    """Convert any audio format (webm, wav, etc) to numpy array."""
-    audio = AudioSegment.from_file(io.BytesIO(contents))
-    audio = audio.set_frame_rate(16000).set_channels(1)
-    samples = np.array(audio.get_array_of_samples()).astype(np.float32)
-    samples = samples / 32768.0
-    return samples
-
 @app.on_event("startup")
 def on_startup():
-    setup_database()
+    setup_database()  # only this — no encoder loading
 
 app.mount("/static", StaticFiles(directory="static"), name="static")
 
@@ -55,3 +47,10 @@ async def identify_speaker(file: UploadFile = File(...)):
 def remove_profile(name: str):
     delete_profile(name)
     return {"message": f"🗑️ Deleted profile for {name}"}
+
+def read_audio(contents: bytes) -> np.ndarray:
+    audio = AudioSegment.from_file(io.BytesIO(contents))
+    audio = audio.set_frame_rate(16000).set_channels(1)
+    samples = np.array(audio.get_array_of_samples()).astype(np.float32)
+    samples = samples / 32768.0
+    return samples

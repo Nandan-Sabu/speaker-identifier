@@ -1,16 +1,14 @@
 import numpy as np
-from resemblyzer import VoiceEncoder, preprocess_wav
 
 SIMILARITY_THRESHOLD = 0.65
 SAMPLE_RATE = 16000
-
 encoder = None
 
 
 def get_encoder():
-    """Load encoder once and reuse."""
     global encoder
     if encoder is None:
+        from resemblyzer import VoiceEncoder
         encoder = VoiceEncoder()
     return encoder
 
@@ -20,22 +18,17 @@ def cosine_similarity(a, b):
 
 
 def get_embedding(audio: np.ndarray) -> np.ndarray:
-    """Convert raw audio array to a voice embedding."""
+    from resemblyzer import preprocess_wav
     enc = get_encoder()
     wav = preprocess_wav(audio, source_sr=SAMPLE_RATE)
     return enc.embed_utterance(wav)
 
 
 def identify(audio: np.ndarray, profiles: dict):
-    """
-    Compare audio against all profiles.
-    Returns (name, score) of best match, or (None, score) if below threshold.
-    """
     if not profiles:
         return None, 0.0
 
     embedding = get_embedding(audio)
-
     best_name = None
     best_score = -1
 
