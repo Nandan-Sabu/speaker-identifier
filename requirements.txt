@@ -1,0 +1,7 @@
+fastapi
+uvicorn
+resemblyzer
+numpy
+scipy
+psycopg2-binary
+python-multipart

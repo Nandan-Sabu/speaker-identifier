@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Speaker Identifier</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #0f0f0f;
+      color: #f0f0f0;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+    }
+
+    h1 { font-size: 2rem; margin-bottom: 8px; }
+    p.subtitle { color: #888; margin-bottom: 40px; }
+
+    .tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 30px;
+    }
+
+    .tab {
+      padding: 10px 24px;
+      border-radius: 8px;
+      border: 1px solid #333;
+      background: #1a1a1a;
+      color: #aaa;
+      cursor: pointer;
+      font-size: 1rem;
+      transition: all 0.2s;
+    }
+
+    .tab.active {
+      background: #6c63ff;
+      color: white;
+      border-color: #6c63ff;
+    }
+
+    .card {
+      background: #1a1a1a;
+      border: 1px solid #2a2a2a;
+      border-radius: 16px;
+      padding: 32px;
+      width: 100%;
+      max-width: 500px;
+    }
+
+    .card h2 { margin-bottom: 6px; font-size: 1.3rem; }
+    .card p { color: #888; margin-bottom: 24px; font-size: 0.9rem; }
+
+    input[type="text"] {
+      width: 100%;
+      padding: 12px 16px;
+      border-radius: 8px;
+      border: 1px solid #333;
+      background: #111;
+      color: white;
+      font-size: 1rem;
+      margin-bottom: 16px;
+      outline: none;
+    }
+
+    input[type="text"]:focus { border-color: #6c63ff; }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      border-radius: 8px;
+      border: none;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 12px;
+    }
+
+    .btn-primary { background: #6c63ff; color: white; }
+    .btn-primary:hover { background: #574fd6; }
+    .btn-primary:disabled { background: #333; color: #666; cursor: not-allowed; }
+
+    .btn-danger { background: #ff4444; color: white; }
+    .btn-danger:hover { background: #cc0000; }
+
+    .btn-secondary {
+      background: #2a2a2a;
+      color: #aaa;
+      border: 1px solid #333;
+    }
+    .btn-secondary:hover { background: #333; }
+
+    .status {
+      margin-top: 16px;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      display: none;
+    }
+
+    .status.success { background: #1a3a1a; color: #4caf50; display: block; }
+    .status.error { background: #3a1a1a; color: #f44336; display: block; }
+    .status.info { background: #1a1a3a; color: #6c63ff; display: block; }
+
+    .recording-indicator {
+      display: none;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 16px;
+      color: #ff4444;
+      font-size: 0.9rem;
+    }
+
+    .recording-indicator.active { display: flex; }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      background: #ff4444;
+      border-radius: 50%;
+      animation: pulse 1s infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.2; }
+    }
+
+    .speaker-result {
+      text-align: center;
+      padding: 24px;
+      border-radius: 12px;
+      background: #111;
+      margin-top: 16px;
+      display: none;
+    }
+
+    .speaker-result.visible { display: block; }
+    .speaker-name { font-size: 2rem; font-weight: bold; color: #6c63ff; }
+    .speaker-score { color: #888; font-size: 0.85rem; margin-top: 4px; }
+    .speaker-unknown { font-size: 1.3rem; color: #888; }
+
+    .profiles-list { margin-top: 20px; }
+    .profile-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 14px;
+      background: #111;
+      border-radius: 8px;
+      margin-bottom: 8px;
+    }
+
+    .profile-item span { font-size: 0.95rem; }
+    .profile-item button {
+      width: auto;
+      padding: 6px 12px;
+      font-size: 0.8rem;
+      margin: 0;
+      background: #2a1a1a;
+      color: #f44336;
+      border: 1px solid #3a1a1a;
+      border-radius: 6px;
+    }
+
+    .section { display: none; }
+    .section.active { display: block; }
+  </style>
+</head>
+<body>
+
+  <h1>🎙️ Speaker Identifier</h1>
+  <p class="subtitle">Enroll voices, then identify who is speaking in real time</p>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('enroll')">Enroll</button>
+    <button class="tab" onclick="switchTab('identify')">Identify</button>
+    <button class="tab" onclick="switchTab('profiles')">Profiles</button>
+  </div>
+
+  <!-- ENROLL -->
+  <div class="card section active" id="enroll">
+    <h2>Enroll a Speaker</h2>
+    <p>Enter a name, record 10 seconds of their voice, then save.</p>
+
+    <input type="text" id="enroll-name" placeholder="Enter name (e.g. John)" />
+
+    <div class="recording-indicator" id="enroll-indicator">
+      <div class="dot"></div>
+      <span id="enroll-timer">Recording... 10s</span>
+    </div>
+
+    <button class="btn-primary" id="enroll-btn" onclick="startEnrollment()">
+      🎤 Start Recording (10s)
+    </button>
+
+    <div class="status" id="enroll-status"></div>
+  </div>
+
+  <!-- IDENTIFY -->
+  <div class="card section" id="identify">
+    <h2>Identify Speaker</h2>
+    <p>Record a short clip and the app will identify who is speaking.</p>
+
+    <div class="recording-indicator" id="identify-indicator">
+      <div class="dot"></div>
+      <span id="identify-timer">Recording... 3s</span>
+    </div>
+
+    <button class="btn-primary" id="identify-btn" onclick="startIdentification()">
+      🎤 Record &amp; Identify (3s)
+    </button>
+
+    <div class="speaker-result" id="speaker-result"></div>
+  </div>
+
+  <!-- PROFILES -->
+  <div class="card section" id="profiles">
+    <h2>Saved Profiles</h2>
+    <p>All enrolled speakers. You can delete any profile here.</p>
+    <div class="profiles-list" id="profiles-list">Loading...</div>
+  </div>
+
+  <script>
+    // ─── Tab switching ───────────────────────────────────────────
+    function switchTab(tab) {
+      document.querySelectorAll('.tab').forEach((t, i) => {
+        t.classList.toggle('active', ['enroll','identify','profiles'][i] === tab);
+      });
+      document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+      document.getElementById(tab).classList.add('active');
+      if (tab === 'profiles') loadProfiles();
+    }
+
+    // ─── Record audio helper ─────────────────────────────────────
+    function recordAudio(seconds) {
+      return new Promise(async (resolve, reject) => {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          const mediaRecorder = new MediaRecorder(stream);
+          const chunks = [];
+          mediaRecorder.ondataavailable = e => chunks.push(e.data);
+          mediaRecorder.onstop = () => {
+            stream.getTracks().forEach(t => t.stop());
+            resolve(new Blob(chunks, { type: 'audio/webm' }));
+          };
+          mediaRecorder.start();
+          setTimeout(() => mediaRecorder.stop(), seconds * 1000);
+        } catch (err) {
+          reject(err);
+        }
+      });
+    }
+
+    // ─── Countdown timer helper ──────────────────────────────────
+    function startCountdown(labelId, seconds) {
+      let remaining = seconds;
+      document.getElementById(labelId).textContent = `Recording... ${remaining}s`;
+      const interval = setInterval(() => {
+        remaining--;
+        document.getElementById(labelId).textContent = `Recording... ${remaining}s`;
+        if (remaining <= 0) clearInterval(interval);
+      }, 1000);
+    }
+
+    // ─── Enroll ──────────────────────────────────────────────────
+    async function startEnrollment() {
+      const name = document.getElementById('enroll-name').value.trim();
+      const status = document.getElementById('enroll-status');
+
+      if (!name) {
+        showStatus('enroll-status', 'Please enter a name first.', 'error');
+        return;
+      }
+
+      const btn = document.getElementById('enroll-btn');
+      btn.disabled = true;
+      document.getElementById('enroll-indicator').classList.add('active');
+      startCountdown('enroll-timer', 10);
+      showStatus('enroll-status', 'Recording... speak clearly!', 'info');
+
+      try {
+        const audioBlob = await recordAudio(10);
+
+        showStatus('enroll-status', 'Processing...', 'info');
+        document.getElementById('enroll-indicator').classList.remove('active');
+
+        const formData = new FormData();
+        formData.append('name', name);
+        formData.append('file', audioBlob, 'enroll.webm');
+
+        const res = await fetch('/enroll', { method: 'POST', body: formData });
+        const data = await res.json();
+
+        if (res.ok) {
+          showStatus('enroll-status', data.message, 'success');
+          document.getElementById('enroll-name').value = '';
+        } else {
+          showStatus('enroll-status', data.detail || 'Something went wrong.', 'error');
+        }
+      } catch (err) {
+        showStatus('enroll-status', 'Microphone access denied or error occurred.', 'error');
+      }
+
+      btn.disabled = false;
+    }
+
+    // ─── Identify ────────────────────────────────────────────────
+    async function startIdentification() {
+      const btn = document.getElementById('identify-btn');
+      const result = document.getElementById('speaker-result');
+
+      btn.disabled = true;
+      document.getElementById('identify-indicator').classList.add('active');
+      startCountdown('identify-timer', 3);
+      result.classList.remove('visible');
+
+      try {
+        const audioBlob = await recordAudio(3);
+        document.getElementById('identify-indicator').classList.remove('active');
+        btn.textContent = '🔄 Identifying...';
+
+        const formData = new FormData();
+        formData.append('file', audioBlob, 'identify.webm');
+
+        const res = await fetch('/identify', { method: 'POST', body: formData });
+        const data = await res.json();
+
+        result.classList.add('visible');
+        if (data.identified) {
+          result.innerHTML = `
+            <div class="speaker-name">👤 ${data.speaker}</div>
+            <div class="speaker-score">Confidence: ${(data.score * 100).toFixed(1)}%</div>
+          `;
+        } else {
+          result.innerHTML = `
+            <div class="speaker-unknown">❓ Unknown Speaker</div>
+            <div class="speaker-score">Best score: ${(data.score * 100).toFixed(1)}%</div>
+          `;
+        }
+      } catch (err) {
+        result.classList.add('visible');
+        result.innerHTML = `<div class="speaker-unknown">❌ Error occurred</div>`;
+      }
+
+      btn.disabled = false;
+      btn.textContent = '🎤 Record & Identify (3s)';
+    }
+
+    // ─── Profiles ────────────────────────────────────────────────
+    async function loadProfiles() {
+      const list = document.getElementById('profiles-list');
+      const res = await fetch('/profiles');
+      const data = await res.json();
+
+      if (data.profiles.length === 0) {
+        list.innerHTML = '<p style="color:#666">No profiles saved yet.</p>';
+        return;
+      }
+
+      list.innerHTML = data.profiles.map(name => `
+        <div class="profile-item">
+          <span>👤 ${name}</span>
+          <button onclick="deleteProfile('${name}')">Delete</button>
+        </div>
+      `).join('');
+    }
+
+    async function deleteProfile(name) {
+      if (!confirm(`Delete profile for ${name}?`)) return;
+      await fetch(`/profiles/${name}`, { method: 'DELETE' });
+      loadProfiles();
+    }
+
+    // ─── Helpers ─────────────────────────────────────────────────
+    function showStatus(id, message, type) {
+      const el = document.getElementById(id);
+      el.textContent = message;
+      el.className = `status ${type}`;
+    }
+  </script>
+</body>
+</html>
